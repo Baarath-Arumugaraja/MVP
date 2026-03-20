@@ -3,7 +3,7 @@ import json
 import os
 import asyncio
 
-OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
+NVIDIA_API_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
 
 
 def sanitize(text: str) -> str:
@@ -14,18 +14,27 @@ def sanitize(text: str) -> str:
 
 
 async def answer_followup(question: str, report_context: dict) -> str:
-    api_key = os.getenv("OPENROUTER_API_KEY") or os.getenv("ANTHROPIC_API_KEY")
+    # 🔥 STRIP KEY (fixes your main bug)
+    api_key = (
+        os.getenv("NVIDIA_API_KEY") or
+        os.getenv("OPENROUTER_API_KEY") or
+        os.getenv("ANTHROPIC_API_KEY") or
+        ""
+    ).strip()
 
     if not api_key:
-        return "API key not configured. Add OPENROUTER_API_KEY to your .env file."
+        return "API key not configured. Add NVIDIA_API_KEY to your .env file."
 
-    # Extract context safely
+    # Debug once if needed
+    # print("API KEY:", repr(api_key))
+
+    # Extract + sanitize
     molecule = sanitize(report_context.get("molecule", "the drug"))
     report = report_context.get("report", {})
 
-    # Convert report to compact string (NO newlines)
+    # Compact JSON (NO newlines)
     try:
-        report_str = json.dumps(report, separators=(",", ":"))[:4000]  # limit size
+        report_str = json.dumps(report, separators=(",", ":"))[:4000]
     except Exception:
         report_str = "{}"
 
@@ -44,13 +53,11 @@ async def answer_followup(question: str, report_context: dict) -> str:
 
     headers = {
         "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-        "HTTP-Referer": os.getenv("APP_URL", "http://localhost"),
-        "X-Title": "RepurposeAI"
+        "Content-Type": "application/json"
     }
 
     payload = {
-        "model": "anthropic/claude-3.5-haiku",  # upgraded model
+        "model": "meta/llama3-70b-instruct",  # NVIDIA-supported model
         "max_tokens": 300,
         "messages": [
             {"role": "system", "content": system_prompt},
@@ -58,14 +65,14 @@ async def answer_followup(question: str, report_context: dict) -> str:
         ]
     }
 
-    # Retry logic (2 attempts)
+    # Retry logic
     for attempt in range(2):
         try:
             timeout = aiohttp.ClientTimeout(total=20)
 
             async with aiohttp.ClientSession(timeout=timeout) as session:
                 async with session.post(
-                    OPENROUTER_API_URL,
+                    NVIDIA_API_URL,
                     headers=headers,
                     json=payload
                 ) as resp:
@@ -87,5 +94,4 @@ async def answer_followup(question: str, report_context: dict) -> str:
         except Exception as e:
             if attempt == 1:
                 return f"Request failed after retry: {str(e)}"
-
-            await asyncio.sleep(1)  # small delay before retry
+            await asyncio.sleep(1)
