@@ -2,6 +2,13 @@ from flask import Flask, request, jsonify, render_template, send_file
 from flask_cors import CORS
 import asyncio, json, os, io, time
 
+# ══════════════════════════════════════════════════════════════════════════════
+# 🔑 ADD YOUR API KEY HERE
+# ══════════════════════════════════════════════════════════════════════════════
+DIRECT_API_KEY = "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
+"  
+# ══════════════════════════════════════════════════════════════════════════════
+
 # Load .env locally only — on Vercel env vars are set in dashboard
 try:
     from dotenv import load_dotenv
@@ -9,8 +16,8 @@ try:
 except Exception:
     pass
 
-# Force read from environment
-OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+# Priority: Direct key > Environment variable
+OPENROUTER_API_KEY = DIRECT_API_KEY or os.environ.get("OPENROUTER_API_KEY", "")
 if OPENROUTER_API_KEY:
     os.environ["OPENROUTER_API_KEY"] = OPENROUTER_API_KEY
 
@@ -163,5 +170,9 @@ if __name__ == "__main__":
     api_set = bool(os.environ.get("OPENROUTER_API_KEY"))
     print("RepurposeAI starting...")
     print(f"   API key : {'set' if api_set else 'not set'}")
+    if DIRECT_API_KEY:
+        print(f"   Source  : Direct (hardcoded)")
+    elif api_set:
+        print(f"   Source  : Environment variable")
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
