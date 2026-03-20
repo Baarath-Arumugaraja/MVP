@@ -10,7 +10,7 @@ except Exception:
     pass
 
 # Force read from environment
-OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "") or "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"
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "") or sk-or-v1-2e1f6002494df445792e3d0c33f2f9c747b4ec80d9ad8bd5b1b88cd3bf418f3
 os.environ["OPENROUTER_API_KEY"] = OPENROUTER_API_KEY
 
 from modules.clinical       import fetch_clinical_trials
