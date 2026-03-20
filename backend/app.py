@@ -3,9 +3,10 @@ from flask_cors import CORS
 import asyncio, json, os, io, time
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 🔑 ADD YOUR API KEY HERE
+# 🔑 ADD YOUR NVIDIA API KEY HERE
 # ══════════════════════════════════════════════════════════════════════════════
-DIRECT_API_KEY = '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'
+NVIDIA_API_KEY = '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'  # Replace with your NVIDIA key
+
 # ══════════════════════════════════════════════════════════════════════════════
 
 # Load .env locally only — on Vercel env vars are set in dashboard
@@ -15,10 +16,10 @@ try:
 except Exception:
     pass
 
-# Priority: Direct key > Environment variable
-OPENROUTER_API_KEY = DIRECT_API_KEY or os.environ.get("OPENROUTER_API_KEY", "")
-if OPENROUTER_API_KEY:
-    os.environ["OPENROUTER_API_KEY"] = OPENROUTER_API_KEY
+# Priority: NVIDIA key > Environment variable
+API_KEY = NVIDIA_API_KEY or os.environ.get("NVIDIA_API_KEY", "")
+if API_KEY:
+    os.environ["NVIDIA_API_KEY"] = API_KEY
 
 from modules.clinical       import fetch_clinical_trials
 from modules.patents        import fetch_patents
@@ -45,7 +46,7 @@ def index():
 
 @app.route("/health")
 def health():
-    api_set = bool(os.environ.get("OPENROUTER_API_KEY") or os.environ.get("ANTHROPIC_API_KEY"))
+    api_set = bool(os.environ.get("NVIDIA_API_KEY"))
     return jsonify({"status": "ok", "api_key_set": api_set})
 
 @app.route("/analyze", methods=["POST"])
@@ -166,10 +167,10 @@ async def run_pipeline(molecule):
     }
 
 if __name__ == "__main__":
-    api_set = bool(os.environ.get("OPENROUTER_API_KEY"))
+    api_set = bool(os.environ.get("NVIDIA_API_KEY"))
     print("RepurposeAI starting...")
     print(f"   API key : {'set' if api_set else 'not set'}")
-    if DIRECT_API_KEY:
+    if NVIDIA_API_KEY:
         print(f"   Source  : Direct (hardcoded)")
     elif api_set:
         print(f"   Source  : Environment variable")
