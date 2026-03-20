@@ -2,9 +2,9 @@ from flask import Flask, request, jsonify, render_template, send_file
 from flask_cors import CORS
 from dotenv import load_dotenv
 import asyncio, json, os, io, time
-
+ 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
-
+ 
 from modules.clinical      import fetch_clinical_trials
 from modules.patents       import fetch_patents
 from modules.market        import fetch_market_data
@@ -16,23 +16,23 @@ from modules.followup      import answer_followup
 from modules.contradiction import detect_contradictions
 from modules.context_memory import (extract_clinical_context,
                                      build_synthesis_context)
-
+ 
 app = Flask(__name__,
-            template_folder="../frontend/templates",
-            static_folder="../frontend/static")
+            template_folder=os.path.join(os.path.dirname(__file__), "../frontend/templates"),
+            static_folder=os.path.join(os.path.dirname(__file__), "../frontend/static"))
 CORS(app)
-
+ 
 # ── routes ──────────────────────────────────────────────────────────────────
-
+ 
 @app.route("/")
 def index():
     return render_template("index.html")
-
+ 
 @app.route("/health")
 def health():
     api_set = bool(os.getenv("OPENROUTER_API_KEY") or os.getenv("ANTHROPIC_API_KEY"))
     return jsonify({"status": "ok", "api_key_set": api_set})
-
+ 
 @app.route("/analyze", methods=["POST"])
 def analyze():
     data     = request.get_json()
@@ -50,7 +50,7 @@ def analyze():
     except Exception as e:
         print(f"[Pipeline error] {e}")
         return jsonify({"error": str(e)}), 500
-
+ 
 @app.route("/compare", methods=["POST"])
 def compare():
     data = request.get_json()
@@ -67,7 +67,7 @@ def compare():
         return jsonify({"molecule1": r1, "molecule2": r2})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
+ 
 @app.route("/batch", methods=["POST"])
 def batch():
     data      = request.get_json()
@@ -86,7 +86,7 @@ def batch():
         return jsonify({"results": results_sorted})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
+ 
 @app.route("/followup", methods=["POST"])
 def followup():
     data     = request.get_json()
@@ -102,13 +102,13 @@ def followup():
         return jsonify({"answer": answer})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
+ 
 # ── pipeline ─────────────────────────────────────────────────────────────────
-
+ 
 async def run_pipeline(molecule):
     t0 = time.time()
-    print(f"[Orchestrator] ── Starting: {molecule}")
-
+    print(f"[Orchestrator] Starting: {molecule}")
+ 
     # Stage 1: Run all agents in parallel
     clinical, patents, market, regulatory, pubmed = await asyncio.gather(
         fetch_clinical_trials(molecule),
@@ -117,53 +117,54 @@ async def run_pipeline(molecule):
         fetch_regulatory_data(molecule),
         fetch_pubmed(molecule)
     )
-
-    # Stage 2: Context memory — extract clinical signals
+ 
+    # Stage 2: Context memory
     clinical_ctx = extract_clinical_context(clinical)
     print(f"[Context] {clinical_ctx['signal_summary']}")
-
-    # Stage 3: Build cross-domain context string
+ 
+    # Stage 3: Cross-domain context string
     cross_ctx = build_synthesis_context(
         molecule, clinical, patents, market, regulatory, pubmed, clinical_ctx)
-
+ 
     # Stage 4: Confidence scoring
     confidence = compute_confidence(clinical, patents, market, regulatory)
-    print(f"[Scorer] {confidence['total']}/100 — {confidence['label']}")
-
-    # Stage 5: AI synthesis with full cross-domain context
+    print(f"[Scorer] {confidence['total']}/100")
+ 
+    # Stage 5: AI synthesis
     report = await synthesize_report(
         molecule, clinical, patents, market, regulatory, cross_ctx)
-
+ 
     if isinstance(report, dict):
         report["confidence_score"]     = confidence["total"]
         report["confidence_breakdown"] = confidence["breakdown"]
         report["confidence_label"]     = confidence["label"]
-
+ 
     # Stage 6: Contradiction detection
     contradictions = detect_contradictions(clinical, patents, market, regulatory, report)
     if contradictions:
-        print(f"[Contradictions] {len(contradictions)} flags raised")
-
+        print(f"[Contradictions] {len(contradictions)} flags")
+ 
     elapsed = round(time.time() - t0, 1)
-    print(f"[Orchestrator] ── Done in {elapsed}s: {molecule}")
-
+    print(f"[Orchestrator] Done in {elapsed}s: {molecule}")
+ 
     return {
-        "molecule":        molecule,
-        "clinical":        clinical,
-        "patents":         patents,
-        "market":          market,
-        "regulatory":      regulatory,
-        "pubmed":          pubmed,
-        "report":          report,
-        "confidence":      confidence,
-        "contradictions":  contradictions,
+        "molecule":         molecule,
+        "clinical":         clinical,
+        "patents":          patents,
+        "market":           market,
+        "regulatory":       regulatory,
+        "pubmed":           pubmed,
+        "report":           report,
+        "confidence":       confidence,
+        "contradictions":   contradictions,
         "clinical_context": clinical_ctx,
-        "elapsed_seconds": elapsed
+        "elapsed_seconds":  elapsed
     }
-
+ 
 if __name__ == "__main__":
     api_set = bool(os.getenv("OPENROUTER_API_KEY") or os.getenv("ANTHROPIC_API_KEY"))
-    print("🧬 RepurposeAI starting…")
-    print(f"   API key : {'✓ set' if api_set else '✗ not set (demo mode)'}")
-    print(f"   URL     : http://localhost:5000")
-    app.run(debug=True, port=5000)
+    print("RepurposeAI starting...")
+    print(f"   API key : {'set' if api_set else 'not set (demo mode)'}")
+    port = int(os.environ.get('PORT', 5000))
+    print(f"   URL     : http://localhost:{port}")
+    app.run(host='0.0.0.0', port=port, debug=False)
