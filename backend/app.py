@@ -5,8 +5,7 @@ import asyncio, json, os, io, time
 # ══════════════════════════════════════════════════════════════════════════════
 # 🔑 ADD YOUR API KEY HERE
 # ══════════════════════════════════════════════════════════════════════════════
-DIRECT_API_KEY = "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
-"  
+DIRECT_API_KEY = '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'
 # ══════════════════════════════════════════════════════════════════════════════
 
 # Load .env locally only — on Vercel env vars are set in dashboard
