@@ -5,7 +5,7 @@ import asyncio, json, os, io, time
 # ══════════════════════════════════════════════════════════════════════════════
 # 🔑 ADD YOUR NVIDIA API KEY HERE
 # ══════════════════════════════════════════════════════════════════════════════
-NVIDIA_API_KEY = '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'  # Replace with your NVIDIA key
+NVIDIA_API_KEY = "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"
 
 # ══════════════════════════════════════════════════════════════════════════════
 
